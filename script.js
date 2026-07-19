@@ -5,8 +5,8 @@ const DIR_DELTA = { UP: [-1, 0], RIGHT: [0, 1], DOWN: [1, 0], LEFT: [0, -1] };
 const DIR_ROTATION = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 };
 const LABELS = {
   move: '⬆️ Move Forward',
-  turnLeft: '↺ Turn Left',
-  turnRight: '↻ Turn Right',
+  turnLeft: '⬅️ Turn Left',
+  turnRight: '➡️ Turn Right',
   repeat: '🔁 Repeat',
 };
 const SPEAK_LABELS = {
