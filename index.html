@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robo-Path — Learn to Code!</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🤖 Robo-Path</h1>
+  <div class="header-right">
+    <button id="btnSound" class="sound-toggle" title="Turn sound on/off">🔊</button>
+    <div class="level-dots" id="levelDots"></div>
+  </div>
+</header>
+
+<main class="game">
+
+  <!-- PALETTE -->
+  <section class="panel palette-panel">
+    <h2>🧩 Blocks</h2>
+    <div class="palette" id="palette"></div>
+    <div class="hint" id="hintBox"></div>
+  </section>
+
+  <!-- BOARD -->
+  <section class="panel board-panel">
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+    <div class="controls">
+      <button id="btnRun" class="btn btn-run">▶️ Run</button>
+      <button id="btnClear" class="btn btn-clear">🗑️ Clear</button>
+      <button id="btnStep" class="btn btn-step" title="Do one step at a time">👣 Step by Step</button>
+    </div>
+  </section>
+
+  <!-- PROGRAM -->
+  <section class="panel program-panel">
+    <h2>📜 My Program</h2>
+    <div class="active-container-banner" id="activeBanner" style="display:none;">
+      <span id="activeBannerText"></span>
+      <button id="btnBackToMain" class="btn-small">◀ Back</button>
+    </div>
+    <div class="program-list" id="programList">
+      <p class="empty-msg" id="emptyMsg">Tap blocks on the left to build your program!</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- WIN MODAL -->
+<div class="modal-overlay" id="winModal">
+  <div class="modal">
+    <div class="modal-emoji">🎉⭐🎉</div>
+    <h2>Great job!</h2>
+    <p id="winText">You solved the level!</p>
+    <button id="btnNextLevel" class="btn btn-run">Next Level ▶️</button>
+    <button id="btnReplay" class="btn-small">Replay</button>
+  </div>
+</div>
+
+<!-- FAIL TOAST -->
+<div class="toast" id="failToast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
