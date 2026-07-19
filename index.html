@@ -3,16 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Robo-Path — Learn to Code!</title>
+<title>Robo-Path — Infinite Space Coding Adventure!</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<div class="starfield" aria-hidden="true"></div>
+<div class="planet planet-a" aria-hidden="true"></div>
+<div class="planet planet-b" aria-hidden="true"></div>
+
 <header class="topbar">
   <h1>🤖 Robo-Path</h1>
   <div class="header-right">
+    <div class="stars-badge">
+      <span class="stars-badge-icon">⭐</span>
+      <span id="starCount">0</span>
+      <span class="rank-label" id="rankLabel">Explorer</span>
+    </div>
+    <div class="level-nav">
+      <button id="btnPrevLevel" class="nav-arrow" title="Previous level">◀</button>
+      <span class="level-badge">Level <span id="levelNumber">1</span></span>
+      <button id="btnNextLevelNav" class="nav-arrow" title="Next level">▶</button>
+    </div>
     <button id="btnSound" class="sound-toggle" title="Turn sound on/off">🔊</button>
-    <div class="level-dots" id="levelDots"></div>
   </div>
 </header>
 
@@ -53,9 +66,10 @@
 
 <!-- WIN MODAL -->
 <div class="modal-overlay" id="winModal">
+  <div class="confetti-container" id="confettiContainer"></div>
   <div class="modal">
-    <div class="modal-emoji">🎉⭐🎉</div>
-    <h2>Great job!</h2>
+    <div class="modal-emoji">🎉🪐🎉</div>
+    <h2 id="winTitle">Mission Complete!</h2>
     <p id="winText">You solved the level!</p>
     <button id="btnNextLevel" class="btn btn-run">Next Level ▶️</button>
     <button id="btnReplay" class="btn-small">Replay</button>

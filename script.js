@@ -1,5 +1,5 @@
 // ---------- Constants ----------
-const CELL = 60;
+const CELL = 56;
 const ORDER = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
 const DIR_DELTA = { UP: [-1, 0], RIGHT: [0, 1], DOWN: [1, 0], LEFT: [0, -1] };
 const DIR_ROTATION = { UP: 0, RIGHT: 90, DOWN: 180, LEFT: 270 };
@@ -9,65 +9,134 @@ const LABELS = {
   turnRight: '↻ Turn Right',
   repeat: '🔁 Repeat',
 };
-// Plain-text versions for speech (no emoji, no arrows)
 const SPEAK_LABELS = {
   move: 'Move forward',
   turnLeft: 'Turn left',
   turnRight: 'Turn right',
   repeat: 'Repeat',
 };
+const CONFETTI_COLORS = ['#F72FA0', '#7B2FF7', '#14FFEC', '#FFE55C', '#F5622D', '#5CFF8F'];
 
-// ---------- Levels ----------
-const levels = [
-  {
-    rows: 5, cols: 5,
-    start: { row: 2, col: 0, dir: 'RIGHT' },
-    goal: { row: 2, col: 2 },
-    path: [[2, 0], [2, 1], [2, 2]],
-    allowedBlocks: ['move'],
-    hint: "Tap the Move Forward block to send the robot to the star!",
-  },
-  {
-    rows: 5, cols: 5,
-    start: { row: 2, col: 0, dir: 'RIGHT' },
-    goal: { row: 2, col: 4 },
-    path: [[2, 0], [2, 1], [2, 2], [2, 3], [2, 4]],
-    allowedBlocks: ['move'],
-    hint: "This path is longer. Add more Move Forward blocks!",
-  },
-  {
-    rows: 5, cols: 5,
-    start: { row: 0, col: 0, dir: 'RIGHT' },
-    goal: { row: 2, col: 2 },
-    path: [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
-    allowedBlocks: ['move', 'turnLeft', 'turnRight'],
-    hint: "The path turns! Use Turn Right at the right moment.",
-  },
-  {
-    rows: 5, cols: 5,
-    start: { row: 0, col: 0, dir: 'RIGHT' },
-    goal: { row: 1, col: 3 },
-    path: [[0, 0], [0, 1], [1, 1], [1, 2], [1, 3]],
-    allowedBlocks: ['move', 'turnLeft', 'turnRight'],
-    hint: "This path turns twice. Watch which way you go!",
-  },
-  {
-    rows: 5, cols: 5,
-    start: { row: 2, col: 0, dir: 'RIGHT' },
-    goal: { row: 2, col: 4 },
-    path: [[2, 0], [2, 1], [2, 2], [2, 3], [2, 4]],
-    allowedBlocks: ['move', 'repeat'],
-    hint: "Tip: the Repeat block can move forward several times at once!",
-  },
-  {
-    rows: 5, cols: 5,
-    start: { row: 0, col: 0, dir: 'RIGHT' },
-    goal: { row: 3, col: 3 },
-    path: [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3], [2, 3], [3, 3]],
-    allowedBlocks: ['move', 'turnLeft', 'turnRight', 'repeat'],
-    hint: "Combine Repeat and Turn Right to finish the course!",
-  },
-];
+// ---------- Infinite level generation ----------
+const levelCache = {};
+
+function pickAllowedBlocks(idx) {
+  if (idx < 3) return ['move'];
+  if (idx < 7) return ['move', 'turnLeft', 'turnRight'];
+  return ['move', 'turnLeft', 'turnRight', 'repeat'];
+}
+
+function pickGridSize(idx) {
+  return Math.min(5 + Math.floor(idx / 4), 9);
+}
+
+function pickPathLength(idx, gridSize) {
+  const base = 3 + Math.floor(idx * 0.8);
+  return Math.max(3, Math.min(base, gridSize * gridSize - 2, 20));
+}
+
+function pickTurnChance(idx) {
+  if (idx < 3) return 0;
+  return Math.min(0.15 + idx * 0.03, 0.55);
+}
+
+function dirBetween([r1, c1], [r2, c2]) {
+  if (r2 < r1) return 'UP';
+  if (r2 > r1) return 'DOWN';
+  if (c2 > c1) return 'RIGHT';
+  return 'LEFT';
+}
+
+function generateFallbackPath(gridSize) {
+  const row = Math.floor(gridSize / 2);
+  const len = Math.min(gridSize, 4);
+  const path = [];
+  for (let c = 0; c < len; c++) path.push([row, c]);
+  return path;
+}
+
+function generatePath(gridSize, targetLen, turnChance) {
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const visited = new Set();
+    let cur = [Math.floor(Math.random() * gridSize), Math.floor(Math.random() * gridSize)];
+    let curDir = ORDER[Math.floor(Math.random() * 4)];
+    const path = [cur];
+    visited.add(cur.join(','));
+    let success = true;
+
+    while (path.length < targetLen) {
+      let preferredDir = curDir;
+      if (path.length > 1 && Math.random() < turnChance) {
+        const perp = (curDir === 'UP' || curDir === 'DOWN') ? ['LEFT', 'RIGHT'] : ['UP', 'DOWN'];
+        preferredDir = perp[Math.floor(Math.random() * 2)];
+      }
+      const tryOrder = [preferredDir, curDir, ...ORDER].filter((d, i, a) => a.indexOf(d) === i);
+      let moved = false;
+      for (const d of tryOrder) {
+        const [dr, dc] = DIR_DELTA[d];
+        const tr = cur[0] + dr;
+        const tc = cur[1] + dc;
+        if (tr >= 0 && tr < gridSize && tc >= 0 && tc < gridSize && !visited.has(`${tr},${tc}`)) {
+          cur = [tr, tc];
+          curDir = d;
+          path.push(cur);
+          visited.add(cur.join(','));
+          moved = true;
+          break;
+        }
+      }
+      if (!moved) { success = false; break; }
+    }
+    if (success && path.length === targetLen) return path;
+  }
+  return generateFallbackPath(gridSize);
+}
+
+function pickHint(idx, allowedBlocks) {
+  if (!allowedBlocks.includes('turnLeft')) {
+    return 'Tap Move Forward to guide the robot to the planet!';
+  }
+  if (!allowedBlocks.includes('repeat')) {
+    return 'This path turns! Use Turn Left and Turn Right to follow it.';
+  }
+  return 'Tip: use the Repeat block to make your program shorter!';
+}
+
+function generateLevel(idx) {
+  const gridSize = pickGridSize(idx);
+  const allowedBlocks = pickAllowedBlocks(idx);
+  const targetLen = pickPathLength(idx, gridSize);
+  const turnChance = pickTurnChance(idx);
+  const path = generatePath(gridSize, targetLen, turnChance);
+  const start = {
+    row: path[0][0],
+    col: path[0][1],
+    dir: path.length > 1 ? dirBetween(path[0], path[1]) : 'RIGHT',
+  };
+  const goal = { row: path[path.length - 1][0], col: path[path.length - 1][1] };
+  return {
+    rows: gridSize,
+    cols: gridSize,
+    start,
+    goal,
+    path,
+    allowedBlocks,
+    hint: pickHint(idx, allowedBlocks),
+  };
+}
+
+function getLevel(idx) {
+  if (!levelCache[idx]) levelCache[idx] = generateLevel(idx);
+  return levelCache[idx];
+}
+
+function getRank(stars) {
+  if (stars >= 30) return '🌌 Galaxy Master';
+  if (stars >= 20) return '🚀 Star Pilot';
+  if (stars >= 10) return '🛰️ Space Cadet';
+  if (stars >= 5) return '👨‍🚀 Junior Astronaut';
+  return 'Explorer';
+}
 
 // ---------- State ----------
 let currentLevelIndex = 0;
@@ -78,6 +147,7 @@ let activeContainer = program;
 let activeContainerLabel = null;
 let robotState = { row: 0, col: 0, dir: 'RIGHT' };
 let completedLevels = new Set();
+let maxUnlockedIndex = 0;
 let isRunning = false;
 let stepQueue = null;
 let stepIndex = 0;
@@ -114,12 +184,52 @@ function speak(text) {
   speechSynthesis.speak(u);
 }
 
+// ---------- Sound effects (Web Audio) ----------
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function beep({ freq = 440, duration = 120, type = 'sine', volume = 0.15, sweepTo = null, delay = 0 }) {
+  if (!voiceEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const startAt = ctx.currentTime + delay;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startAt);
+  if (sweepTo) osc.frequency.exponentialRampToValueAtTime(sweepTo, startAt + duration / 1000);
+  gain.gain.setValueAtTime(volume, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration / 1000);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(startAt);
+  osc.stop(startAt + duration / 1000);
+}
+
+function sfxAdd() { beep({ freq: 620, duration: 90, type: 'triangle', volume: 0.12 }); }
+function sfxRemove() { beep({ freq: 260, duration: 90, type: 'triangle', volume: 0.1 }); }
+function sfxRun() { beep({ freq: 300, duration: 220, type: 'sine', volume: 0.12, sweepTo: 700 }); }
+function sfxFail() { beep({ freq: 220, duration: 300, type: 'sawtooth', volume: 0.12, sweepTo: 90 }); }
+function sfxWin() {
+  [523, 659, 784, 1047].forEach((f, i) => beep({ freq: f, duration: 180, type: 'triangle', volume: 0.14, delay: i * 0.12 }));
+}
+
 // ---------- DOM ----------
 const boardEl = document.getElementById('board');
 const paletteEl = document.getElementById('palette');
 const programListEl = document.getElementById('programList');
 const hintBoxEl = document.getElementById('hintBox');
-const levelDotsEl = document.getElementById('levelDots');
+const levelNumberEl = document.getElementById('levelNumber');
+const starCountEl = document.getElementById('starCount');
+const rankLabelEl = document.getElementById('rankLabel');
+const btnPrevLevel = document.getElementById('btnPrevLevel');
+const btnNextLevelNav = document.getElementById('btnNextLevelNav');
 const activeBannerEl = document.getElementById('activeBanner');
 const activeBannerTextEl = document.getElementById('activeBannerText');
 const btnBackToMain = document.getElementById('btnBackToMain');
@@ -128,10 +238,12 @@ const btnClear = document.getElementById('btnClear');
 const btnStep = document.getElementById('btnStep');
 const btnSound = document.getElementById('btnSound');
 const winModal = document.getElementById('winModal');
+const winTitle = document.getElementById('winTitle');
 const winText = document.getElementById('winText');
 const btnNextLevel = document.getElementById('btnNextLevel');
 const btnReplay = document.getElementById('btnReplay');
 const failToast = document.getElementById('failToast');
+const confettiContainer = document.getElementById('confettiContainer');
 
 btnSound.onclick = () => {
   voiceEnabled = !voiceEnabled;
@@ -166,12 +278,20 @@ function updateControlsDisabled() {
   btnRun.disabled = isRunning || stepQueue !== null;
   btnStep.disabled = isRunning;
   btnClear.disabled = isRunning;
+  btnPrevLevel.disabled = isRunning || currentLevelIndex === 0;
+  btnNextLevelNav.disabled = isRunning || currentLevelIndex >= maxUnlockedIndex;
+}
+
+function updateHeaderStats() {
+  levelNumberEl.textContent = currentLevelIndex + 1;
+  starCountEl.textContent = completedLevels.size;
+  rankLabelEl.textContent = getRank(completedLevels.size);
 }
 
 // ---------- Level loading ----------
 function loadLevel(index) {
   currentLevelIndex = index;
-  level = levels[index];
+  level = getLevel(index);
   pathSet = new Set(level.path.map(([r, c]) => `${r},${c}`));
   program = [];
   activeContainer = program;
@@ -186,8 +306,8 @@ function loadLevel(index) {
   renderBoard();
   renderPalette();
   renderProgram();
-  renderLevelDots();
   hintBoxEl.textContent = level.hint;
+  updateHeaderStats();
   updateControlsDisabled();
   speak(`Level ${index + 1}. ${level.hint}`);
 }
@@ -204,9 +324,10 @@ function renderBoard() {
       const isPath = pathSet.has(`${r},${c}`);
       cell.className = 'cell ' + (isPath ? 'path' : 'wall');
       if (isPath && r === level.goal.row && c === level.goal.col) {
-        cell.textContent = '⭐';
+        cell.textContent = '🪐';
+        cell.classList.add('goal-cell');
       } else if (!isPath) {
-        cell.textContent = '🌳';
+        cell.textContent = '🪨';
       }
       boardEl.appendChild(cell);
     }
@@ -256,6 +377,7 @@ function addBlock(type) {
   }
   invalidateStepQueue();
   renderProgram();
+  sfxAdd();
   speak(SPEAK_LABELS[type]);
 }
 
@@ -338,6 +460,7 @@ function renderProgram() {
   } else {
     program.forEach((b) => programListEl.appendChild(buildBlockNode(b)));
   }
+  programListEl.classList.toggle('is-active', activeContainer === program && program.length > 0);
   programListEl.onclick = (e) => {
     if (e.target === programListEl) {
       if (isRunning || stepQueue !== null) return;
@@ -364,6 +487,7 @@ function removeBlock(id) {
   activeContainerLabel = null;
   invalidateStepQueue();
   renderProgram();
+  sfxRemove();
 }
 
 function updateActiveBanner() {
@@ -380,17 +504,15 @@ btnBackToMain.onclick = () => {
   renderProgram();
 };
 
-// ---------- Level dots ----------
-function renderLevelDots() {
-  levelDotsEl.innerHTML = '';
-  levels.forEach((_, i) => {
-    const dot = document.createElement('button');
-    dot.className = 'level-dot' + (i === currentLevelIndex ? ' current' : '') + (completedLevels.has(i) ? ' done' : '');
-    dot.textContent = completedLevels.has(i) ? '✓' : String(i + 1);
-    dot.onclick = () => { if (!isRunning) loadLevel(i); };
-    levelDotsEl.appendChild(dot);
-  });
-}
+// ---------- Level navigation ----------
+btnPrevLevel.onclick = () => {
+  if (isRunning || currentLevelIndex === 0) return;
+  loadLevel(currentLevelIndex - 1);
+};
+btnNextLevelNav.onclick = () => {
+  if (isRunning || currentLevelIndex >= maxUnlockedIndex) return;
+  loadLevel(currentLevelIndex + 1);
+};
 
 // ---------- Execution ----------
 function flatten(list, out) {
@@ -454,7 +576,8 @@ async function runProgram() {
   resetRobotToStart();
   renderRobotPosition();
   clearHighlights();
-  await sleep(200);
+  sfxRun();
+  await sleep(250);
 
   const steps = [];
   flatten(program, steps);
@@ -470,6 +593,7 @@ async function runProgram() {
       failed = true;
       showToast('💥 Oops! A wall is in the way. Try again.');
       speak("Oops! There's a wall in the way. Try again.");
+      sfxFail();
       break;
     }
   }
@@ -512,6 +636,7 @@ function stepOnce() {
   if (!ok) {
     showToast('💥 Oops! A wall is in the way. Try again.');
     speak("Oops! There's a wall in the way. Try again.");
+    sfxFail();
     stepQueue = null;
     stepIndex = 0;
     updateControlsDisabled();
@@ -527,28 +652,54 @@ function stepOnce() {
   }
 }
 
+// ---------- Confetti ----------
+function launchConfetti() {
+  confettiContainer.innerHTML = '';
+  const pieceCount = 40;
+  for (let i = 0; i < pieceCount; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+    piece.style.animationDuration = (1.6 + Math.random() * 1.4) + 's';
+    piece.style.animationDelay = (Math.random() * 0.6) + 's';
+    piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+    confettiContainer.appendChild(piece);
+  }
+}
+
 // ---------- Win handling ----------
 function onLevelSuccess() {
+  const wasNewLevel = !completedLevels.has(currentLevelIndex);
   completedLevels.add(currentLevelIndex);
-  renderLevelDots();
-  const isLast = currentLevelIndex === levels.length - 1;
-  winText.textContent = isLast
-    ? "You finished all the levels! You're a coding champion! 🏆"
+  maxUnlockedIndex = Math.max(maxUnlockedIndex, currentLevelIndex + 1);
+  updateHeaderStats();
+  updateControlsDisabled();
+
+  const stars = completedLevels.size;
+  const isMilestone = wasNewLevel && stars > 0 && stars % 5 === 0;
+
+  winTitle.textContent = isMilestone ? `🌟 Rank Up: ${getRank(stars)}!` : 'Mission Complete!';
+  winText.textContent = isMilestone
+    ? `Amazing! You've completed ${stars} levels!`
     : 'You solved the level!';
-  btnNextLevel.textContent = isLast ? '🎉 Play Again' : 'Next Level ▶️';
+  btnNextLevel.textContent = 'Next Level ▶️';
   winModal.classList.add('show');
-  speak(isLast
-    ? "Congratulations! You finished all the levels! You're a coding champion!"
+  launchConfetti();
+  sfxWin();
+  speak(isMilestone
+    ? `Amazing! You've completed ${stars} levels! You're now a ${getRank(stars).replace(/[^a-zA-Z ]/g, '')}!`
     : 'Great job! You solved it!');
 }
 
 btnNextLevel.onclick = () => {
   winModal.classList.remove('show');
-  if (currentLevelIndex + 1 < levels.length) loadLevel(currentLevelIndex + 1);
-  else loadLevel(0);
+  confettiContainer.innerHTML = '';
+  loadLevel(currentLevelIndex + 1);
 };
 btnReplay.onclick = () => {
   winModal.classList.remove('show');
+  confettiContainer.innerHTML = '';
   loadLevel(currentLevelIndex);
 };
 
