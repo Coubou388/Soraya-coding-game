@@ -309,6 +309,18 @@ body {
   background: rgba(255,255,255,0.02);
 }
 
+.cell.wall-monster {
+  background: radial-gradient(circle, rgba(247,47,160,0.16), rgba(123,47,247,0.06));
+  font-size: 1.6rem;
+  animation: monster-wiggle 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(247,47,160,0.5));
+}
+
+@keyframes monster-wiggle {
+  0%, 100% { transform: rotate(-6deg) scale(1); }
+  50% { transform: rotate(6deg) scale(1.1); }
+}
+
 .cell.path {
   background: radial-gradient(circle, rgba(20,255,236,0.18), rgba(123,47,247,0.08));
   border: 1px solid rgba(160,140,255,0.25);

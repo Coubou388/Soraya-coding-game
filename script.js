@@ -16,6 +16,7 @@ const SPEAK_LABELS = {
   repeat: 'Repeat',
 };
 const CONFETTI_COLORS = ['#F72FA0', '#7B2FF7', '#14FFEC', '#FFE55C', '#F5622D', '#5CFF8F'];
+const WALL_MONSTERS = ['👾', '👽', '🛸'];
 
 // ---------- Infinite level generation ----------
 const levelCache = {};
@@ -327,7 +328,9 @@ function renderBoard() {
         cell.textContent = '🪐';
         cell.classList.add('goal-cell');
       } else if (!isPath) {
-        cell.textContent = '🪨';
+        cell.textContent = WALL_MONSTERS[Math.floor(Math.random() * WALL_MONSTERS.length)];
+        cell.classList.add('wall-monster');
+        cell.style.animationDelay = (Math.random() * 2).toFixed(2) + 's';
       }
       boardEl.appendChild(cell);
     }
